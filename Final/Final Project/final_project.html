@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Letter Matching Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #f2f2f2;
+    }
+
+    .game-container {
+      border: 10px solid #000;
+      border-radius: 20px;
+      max-width: 700px;
+      margin: 20px auto;
+      padding: 30px 15px;
+      text-align: center;
+      background-color: white;
+      transition: background-color 1s ease;
+    }
+
+    h1 {
+      font-size: 32px;
+    }
+
+    #letter {
+      font-size: 100px;
+      color: #333;
+      margin: 30px 0;
+    }
+
+    #score, #time {
+      font-size: 24px;
+      margin: 10px;
+    }
+
+    #message {
+      font-size: 24px;
+      color: rgb(182, 221, 182);
+      margin: 20px 0;
+    }
+
+    .keyboard {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: green;
+      padding: 10px;
+      border-radius: 10px;
+      transition: background-color 0.3s;
+    }
+
+    .key-row {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+      gap: 8px;
+    }
+
+    .key {
+      background-color: #dcdcdc;
+      padding: 15px 10px;
+      font-size: 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .key:hover {
+      background-color: #b0c4de;
+    }
+
+    #restart-btn {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      font-size: 20px;
+      padding: 10px 20px;
+      margin-top: 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: none;
+    }
+
+    #restart-btn:hover {
+      background-color: #45a049;
+    }
+
+    @media (max-width: 500px) {
+      #letter {
+        font-size: 70px;
+      }
+
+      .key {
+        font-size: 16px;
+        padding: 10px 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-container" id="game">
+  <h1>🔤 Letter Matching Game</h1>
+  <div id="score">Score: 0</div>
+  <div id="time">Time Left: 60s</div>
+  <div id="letter">A</div>
+  <div id="message"></div>
+  <div class="keyboard" id="keyboard"></div>
+  <button id="restart-btn">🔁 Restart Game</button>
+</div>
+
+<!-- Sound for wrong input -->
+<audio id="wrong-sound" src="wrong.mp3"></audio>
+
+<!-- Sound for time over -->
+<audio id="end-sound" src="end.mp3"></audio>
+
+<script>
+  const letterDisplay = document.getElementById('letter');
+  const scoreDisplay = document.getElementById('score');
+  const timeDisplay = document.getElementById('time');
+  const messageDisplay = document.getElementById('message');
+  const keyboardContainer = document.getElementById('keyboard');
+  const gameContainer = document.getElementById('game');
+  const restartBtn = document.getElementById('restart-btn');
+  const wrongSound = document.getElementById('wrong-sound');
+  const endSound = document.getElementById('end-sound');
+
+  let score = 0;
+  let timeLeft = 60;
+  let currentLetter = '';
+  let gameOver = false;
+  let letterTimeout;
+  let timerInterval;
+
+  const bgColors = ['white'];
+  let currentBgIndex = 0;
+
+  function getRandomLetter() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return letters[Math.floor(Math.random() * letters.length)];
+  }
+
+  function setNewLetter() {
+    currentLetter = getRandomLetter();
+    letterDisplay.textContent = currentLetter;
+    resetKeyboardColor();
+    startLetterTimeout();
+  }
+
+  function updateScore() {
+    score++;
+    scoreDisplay.textContent = 'Score: ' + score;
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        clearTimeout(letterTimeout);
+        endGame();
+      } else {
+        timeLeft--;
+        timeDisplay.textContent = 'Time Left: ' + timeLeft + 's';
+        if (timeLeft % 5 === 0) {
+          changeBackgroundColor();
+        }
+      }
+    }, 1000);
+  }
+
+  function changeBackgroundColor() {
+    currentBgIndex = (currentBgIndex + 1) % bgColors.length;
+    gameContainer.style.backgroundColor = bgColors[currentBgIndex];
+  }
+
+  function startLetterTimeout() {
+    clearTimeout(letterTimeout);
+    letterTimeout = setTimeout(() => {
+      wrongAnswer();
+    }, 5000); // 5 seconds per letter
+  }
+
+  function wrongAnswer() {
+    if (gameOver) return;
+    keyboardContainer.style.backgroundColor = 'red';
+    wrongSound.currentTime = 0;
+    wrongSound.play();
+    clearTimeout(letterTimeout);
+  }
+
+  function resetKeyboardColor() {
+    keyboardContainer.style.backgroundColor = 'green';
+  }
+
+  function endGame() {
+    gameOver = true;
+    messageDisplay.textContent = `⏰ Time's up! Your final score is ${score}`;
+    document.removeEventListener('keydown', handleKey);
+    endSound.currentTime = 0;
+    endSound.play();
+    restartBtn.style.display = 'inline-block';
+  }
+
+  function handleKey(e) {
+    if (gameOver) return;
+    const pressed = e.key.toUpperCase();
+    checkInput(pressed);
+  }
+
+  function checkInput(letter) {
+    if (letter.toUpperCase() === currentLetter) {
+      resetKeyboardColor();
+      updateScore();
+      setNewLetter();
+    } else {
+      wrongAnswer();
+    }
+  }
+
+  function createKeyboard() {
+    const rows = [
+      'QWERTYUIOP',
+      'ASDFGHJKL',
+      'ZXCVBNM'
+    ];
+
+    keyboardContainer.innerHTML = '';
+
+    rows.forEach(row => {
+      const rowDiv = document.createElement('div');
+      rowDiv.classList.add('key-row');
+
+      row.split('').forEach(letter => {
+        const key = document.createElement('div');
+        key.textContent = letter;
+        key.classList.add('key');
+        key.addEventListener('click', () => {
+          if (!gameOver) checkInput(letter);
+        });
+        rowDiv.appendChild(key);
+      });
+
+      keyboardContainer.appendChild(rowDiv);
+    });
+  }
+
+  restartBtn.addEventListener('click', () => {
+    score = 0;
+    timeLeft = 60;
+    gameOver = false;
+    scoreDisplay.textContent = 'Score: 0';
+    timeDisplay.textContent = 'Time Left: 60s';
+    messageDisplay.textContent = '';
+    restartBtn.style.display = 'none';
+    resetKeyboardColor();
+    setNewLetter();
+    startTimer();
+    document.addEventListener('keydown', handleKey);
+  });
+
+  // Start the game
+  setNewLetter();
+  startTimer();
+  createKeyboard();
+  document.addEventListener('keydown', handleKey);
+</script>
+
+</body>
+</html>
